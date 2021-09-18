@@ -1,15 +1,20 @@
 #include <string>
 #include <iostream>
 
-struct State
+struct RodState
 {
-	std::string state;
+	std::string rodState;
 };
 
-struct Successor
+struct State
 {
-	State stateVariation[3];
+	RodState rodStates[3];
 };
+
+//struct Successor
+//{
+//	State newStates;
+//};
 
 struct PathCost
 {
@@ -18,9 +23,9 @@ struct PathCost
 
 struct Problem
 {
-	State INITIAL_STATE[3] = {"1LMS", "2", "3"};
+	State INITIAL_STATE = { "1LMS", "2", "3" };
 	State** operation;
-	State GOAL_TEST[3] = {"1", "2", "3LMS"};
+	State GOAL_TEST = { "1", "2", "3LMS" };
 	PathCost pathCost;
 };
 
@@ -29,33 +34,40 @@ struct Problem
 //
 //};
 
-State** initSuccessor(State** initState);
-void searchPossibleStates(State** initState, State* thisState, State** newStates, int n);
+State** initSuccessor(State* initState);
+void searchPossibleStates(State* initState, int index, State** newStates, int& n);
 bool checkCondition(const char* ch1, const char* ch2);
 
 int main()
 {
 	Problem* problem = new Problem();
-	State** initState = new State*[3];
-	initState[0] = new State();
-	initState[0]->state = problem->INITIAL_STATE[0].state;
-	initState[1] = new State();
-	initState[1]->state = problem->INITIAL_STATE[1].state;
-	initState[2] = new State();
-	initState[2]->state = problem->INITIAL_STATE[2].state;
+	State* initState = new State();
+	*initState = problem->INITIAL_STATE;
 
 	problem->operation = initSuccessor(initState);
-	for (int i = 0; problem->operation[i]->state != ""; i++)
+	for (int i = 0; problem->operation[i]->rodStates[0].rodState != ""; i++)
 	{
-		std::cout << problem->operation[i]->state << std::endl;
+		for (int j = 0; j < 3; j++)
+		{
+			std::cout << problem->operation[i]->rodStates[j].rodState << " ";
+		}
+		std::cout << std::endl;
 	}
 
-	delete[] initState;
+	problem->operation = initSuccessor(problem->operation[0]);
+	for (int i = 0; problem->operation[i]->rodStates[0].rodState != ""; i++)
+	{
+		for (int j = 0; j < 3; j++)
+		{
+			std::cout << problem->operation[i]->rodStates[j].rodState << " ";
+		}
+		std::cout << std::endl;
+	}
 }
 
-State** initSuccessor(State** initState)
+State** initSuccessor(State* initState)
 {
-	State** newStates = new State*[100];
+	State** newStates = new State * [100];
 	for (int i = 0; i < 100; i++)
 	{
 		newStates[i] = new State();
@@ -63,29 +75,28 @@ State** initSuccessor(State** initState)
 	int n = 0;
 	for (int i = 0; i < 3; i++)
 	{
-		std::string* str = &(*initState[i]).state;
+		std::string* str = &initState->rodStates[i].rodState;
 		if ((*str).length() > 1)
 		{
-			searchPossibleStates(initState, initState[i], newStates, n);
+			searchPossibleStates(initState, i, newStates, n);
 		}
 	}
 	return newStates;
 }
 
-void searchPossibleStates(State** initState, State* thisState, State** newStates, int n)
+void searchPossibleStates(State* initState, int index, State** newStates, int& n)
 {
 	for (int i = 0; i < 3; i++)
 	{
-		std::string* str1 = &(*thisState).state;
-		std::string* str2 = &(*initState[i]).state;
-		if (thisState != initState[i] &&
+		std::string* str1 = &(initState->rodStates[index]).rodState;
+		std::string* str2 = &(initState->rodStates[i]).rodState;
+		if (&initState->rodStates[index] != &initState->rodStates[i] &&
 			checkCondition((*str1).substr((*str1).size() - 1).c_str(),
 				(*str2).substr((*str2).size() - 1).c_str()))
 		{
-			*newStates[n++] = *thisState;
-			*newStates[n] = *initState[i];
-			(*newStates[n++]).state.push_back(*(*str1).substr((*str1).size() - 1).c_str());
-			(*newStates[n - 2]).state.pop_back();
+			*newStates[n++] = *initState;
+			(*newStates[n - 1]).rodStates[i].rodState.push_back(*(*str1).substr((*str1).size() - 1).c_str());
+			(*newStates[n - 1]).rodStates[index].rodState.pop_back();
 		}
 	}
 }
