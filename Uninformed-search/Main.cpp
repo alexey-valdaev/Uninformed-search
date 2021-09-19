@@ -33,6 +33,7 @@ State** initSuccessor(State* initState);
 void searchPossibleStates(State* initState, int index, State** newStates, int& n);
 bool checkCondition(const char* ch1, const char* ch2);
 bool isEqualStates(State* one, State* two);
+bool isRepeatState(Vertex* vertex, State* state);
 void printSolve(Vertex* parent);
 
 Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex**));
@@ -46,14 +47,17 @@ bool goalTest(State* state, Problem* problem);
 Vertex** expand(Vertex* node, State* operators);
 Vertex** queueingFn(Vertex** queue, Vertex** elements);
 Vertex** enqueueAtEnd(Vertex** queue, Vertex** elements);
+Vertex** enqueueAtFront(Vertex** queue, Vertex** elements);
 
 Vertex* breadthFirstSearch(Problem* problem);
+Vertex* depthFirstSearch(Problem* problem);
 
 int main()
 {
 	Problem* problem = new Problem();
 	
-	Vertex* solve = breadthFirstSearch(problem);
+	//Vertex* solve = breadthFirstSearch(problem);
+	Vertex* solve = depthFirstSearch(problem);
 
 	printSolve(solve);
 }
@@ -109,6 +113,19 @@ bool isEqualStates(State* one, State* two)
 {
 	if (one->rodStates[0].rodState == two->rodStates[0].rodState &&
 		one->rodStates[1].rodState == two->rodStates[1].rodState)
+	{
+		return true;
+	}
+	return false;
+}
+
+bool isRepeatState(Vertex* vertex, State* state)
+{
+	if (vertex->parentNode)
+	{
+		if (isRepeatState(vertex->parentNode, state)) return true;
+	}
+	if (isEqualStates(vertex->state, state))
 	{
 		return true;
 	}
@@ -246,29 +263,26 @@ bool goalTest(State* state, Problem* problem)
 
 Vertex** expand(Vertex* node, State* operators)
 {
-	int counter = 0;
+	int counter = -1;
 	State** states = initSuccessor(node->state);
 	int i = 0;
 	while (states[i]->rodStates->rodState != "")
 	{
-		if (isEqualStates(node->action, states[i]) && counter != i)
+		if (isRepeatState(node, states[i]))
 		{
-			counter = i;
-			i--;
+			for (int j = 0; states[i + j]->rodStates->rodState != ""; j++)
+			{
+				states[i + j] = states[i + j + 1];
+			}
 		}
-		i++;
+		else i++;
 	}
-	Vertex** vertex = new Vertex * [i];
-	for (int j = 0; j < counter; j++)
+	Vertex** vertex = new Vertex * [i + 1];
+	for (int j = 0; j < i; j++)
 	{
 		vertex[j] = makeNode(states[j], node, i);
-		vertex[j + 1] = nullptr;
 	}
-	for (int j = counter + 1; j < i; j++)
-	{
-		vertex[j - 1] = makeNode(states[j], node, i);
-		vertex[j] = nullptr;
-	}
+	vertex[i] = nullptr;
 	return vertex;
 }
 
@@ -305,7 +319,40 @@ Vertex** enqueueAtEnd(Vertex** queue, Vertex** elements)
 	return newQueue;
 }
 
+Vertex** enqueueAtFront(Vertex** queue, Vertex** elements)
+{
+	int i = 0;
+	while (elements[i])
+	{
+		i++;
+	}
+	int j = 0;
+	while (queue[j])
+	{
+		j++;
+	}
+
+	Vertex** newQueue = new Vertex * [i + j + 1];
+	int c = 0;
+	for (; c < i; c++)
+	{
+		newQueue[c] = elements[c];
+	}
+	for (; c - i < j; c++)
+	{
+		newQueue[c] = queue[c - i];
+	}
+	newQueue[c] = nullptr;
+
+	return newQueue;
+}
+
 Vertex* breadthFirstSearch(Problem* problem)
 {
 	return generalSearch(problem, enqueueAtEnd);
+}
+
+Vertex* depthFirstSearch(Problem* problem)
+{
+	return generalSearch(problem, enqueueAtFront);
 }
