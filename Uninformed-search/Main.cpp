@@ -11,11 +11,19 @@ struct State
 	RodState rodStates[3];
 };
 
+//struct Problem
+//{
+//	State INITIAL_STATE = { "1LMS", "2", "3" };
+//	State** operation;
+//	State GOAL_TEST = { "1", "2", "3LMS" };
+//	int pathCost;
+//};
+
 struct Problem
 {
-	State INITIAL_STATE = { "1LMS", "2", "3" };
+	State INITIAL_STATE = {"1S", "2", "3"};
 	State** operation;
-	State GOAL_TEST = { "1", "2", "3LMS" };
+	State GOAL_TEST = {"1G", "2", "3"};
 	int pathCost;
 };
 
@@ -26,10 +34,11 @@ struct Vertex
 	State* action;
 	int depth;
 	int pathCost;
-	Vertex** childNode;
 };
 
+//State** initSuccessor(State* initState);
 State** initSuccessor(State* initState);
+//void searchPossibleStates(State* initState, int index, State** newStates, int& n);
 void searchPossibleStates(State* initState, int index, State** newStates, int& n);
 bool checkCondition(const char* ch1, const char* ch2);
 bool isEqualStates(State* one, State* two);
@@ -47,9 +56,11 @@ bool goalTest(State* state, Problem* problem);
 Vertex** expand(Vertex* node, State* operators);
 Vertex** queueingFn(Vertex** queue, Vertex** elements);
 Vertex** enqueueAtEnd(Vertex** queue, Vertex** elements);
+Vertex** enqueueAtCost(Vertex** queue, Vertex** elements);
 Vertex** enqueueAtFront(Vertex** queue, Vertex** elements);
 
 Vertex* breadthFirstSearch(Problem* problem);
+Vertex* uniformCostSearch(Problem* problem);
 Vertex* depthFirstSearch(Problem* problem);
 
 int main()
@@ -57,7 +68,8 @@ int main()
 	Problem* problem = new Problem();
 	
 	//Vertex* solve = breadthFirstSearch(problem);
-	Vertex* solve = depthFirstSearch(problem);
+	//Vertex* solve = depthFirstSearch(problem);
+	Vertex* solve = uniformCostSearch(problem);
 
 	printSolve(solve);
 }
@@ -81,20 +93,37 @@ State** initSuccessor(State* initState)
 	return newStates;
 }
 
+//void searchPossibleStates(State* initState, int index, State** newStates, int& n)
+//{
+//	for (int i = 0; i < 3; i++)
+//	{
+//		std::string* str1 = &(initState->rodStates[index]).rodState;
+//		std::string* str2 = &(initState->rodStates[i]).rodState;
+//		if (&initState->rodStates[index] != &initState->rodStates[i] &&
+//			checkCondition((*str1).substr((*str1).size() - 1).c_str(),
+//				(*str2).substr((*str2).size() - 1).c_str()))
+//		{
+//			*newStates[n++] = *initState;
+//			(*newStates[n - 1]).rodStates[i].rodState.push_back(*(*str1).substr((*str1).size() - 1).c_str());
+//			(*newStates[n - 1]).rodStates[index].rodState.pop_back();
+//		}
+//	}
+//}
+
 void searchPossibleStates(State* initState, int index, State** newStates, int& n)
 {
-	for (int i = 0; i < 3; i++)
+	(*newStates[n]) = *initState;
+	if (initState->rodStates->rodState == "1S")
 	{
-		std::string* str1 = &(initState->rodStates[index]).rodState;
-		std::string* str2 = &(initState->rodStates[i]).rodState;
-		if (&initState->rodStates[index] != &initState->rodStates[i] &&
-			checkCondition((*str1).substr((*str1).size() - 1).c_str(),
-				(*str2).substr((*str2).size() - 1).c_str()))
-		{
-			*newStates[n++] = *initState;
-			(*newStates[n - 1]).rodStates[i].rodState.push_back(*(*str1).substr((*str1).size() - 1).c_str());
-			(*newStates[n - 1]).rodStates[index].rodState.pop_back();
-		}
+		(*newStates[n++]).rodStates->rodState = "1A";
+		(*newStates[n]) = *initState;
+		(*newStates[n++]).rodStates->rodState = "1B";
+		(*newStates[n]) = *initState;
+		(*newStates[n++]).rodStates->rodState = "1C";
+	}
+	else
+	{
+		(*newStates[n++]).rodStates->rodState = "1G";
 	}
 }
 
@@ -143,7 +172,7 @@ void printSolve(Vertex* parent)
 	{
 		std::cout << parent->state->rodStates[i].rodState << " ";
 	}
-	std::cout << std::endl << "depth = " << parent->depth << std::endl;
+	std::cout << std::endl << "pathCost = " << parent->pathCost << std::endl;
 }
 
 Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex**))
@@ -159,7 +188,7 @@ Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex*
 			{
 				std::cout << nodes[j]->state->rodStates[i].rodState << " ";
 			}
-			std::cout << std::endl << "depth = " << nodes[j]->depth << std::endl;
+			std::cout << std::endl << "pathCost = " << nodes[j]->pathCost << std::endl;
 		}
 		std::cout << "\n";
 
@@ -184,7 +213,6 @@ Vertex* makeNode(State* state)
 	vertex->action = nullptr;
 	vertex->depth = 0;
 	vertex->pathCost = 0;
-	vertex->childNode = nullptr;
 
 	return vertex;
 }
@@ -196,25 +224,31 @@ Vertex* makeNode(State* state, Vertex* parent, int count)
 	vertex->parentNode = parent;
 	vertex->action = parent->state;
 	vertex->depth = parent->depth + 1;
-	vertex->pathCost = parent->pathCost + 1;
-
-	int i = 0;
-	if (parent->childNode)
+	if (state->rodStates->rodState == "1A")
 	{
-		while (parent->childNode[i])
-		{
-			i++;
-		}
+		vertex->pathCost = parent->pathCost + 1;
 	}
-	else
+	if (state->rodStates->rodState == "1B")
 	{
-		parent->childNode = new Vertex* [count];
-		for (int j = 0; j < count; j++)
-		{
-			parent->childNode[j] = nullptr;
-		}
+		vertex->pathCost = parent->pathCost + 5;
 	}
-	parent->childNode[i] = vertex;
+	if (state->rodStates->rodState == "1C")
+	{
+		vertex->pathCost = parent->pathCost + 15;
+	}
+	if (vertex->parentNode->state->rodStates->rodState == "1A")
+	{
+		vertex->pathCost = parent->pathCost + 10;
+	}
+	if (vertex->parentNode->state->rodStates->rodState == "1B")
+	{
+		vertex->pathCost = parent->pathCost + 5;
+	}
+	if (vertex->parentNode->state->rodStates->rodState == "1C")
+	{
+		vertex->pathCost = parent->pathCost + 5;
+	}
+	//vertex->pathCost = parent->pathCost + 1;
 
 	return vertex;
 }
@@ -319,6 +353,54 @@ Vertex** enqueueAtEnd(Vertex** queue, Vertex** elements)
 	return newQueue;
 }
 
+Vertex** enqueueAtCost(Vertex** queue, Vertex** elements)
+{
+	int i = 0;
+	while (elements[i])
+	{
+		i++;
+	}
+	int j = 0;
+	while (queue[j])
+	{
+		j++;
+	}
+
+	Vertex** newQueue = new Vertex * [i + j + 1];
+	int c = 0;
+	int counter1 = 0, counter2 = 0;
+	for (; c < i + j; c++)
+	{
+		while (!empty(&queue[counter1]) && !empty(&elements[counter2]))
+		{
+			if (queue[counter1]->pathCost <= elements[counter2]->pathCost)
+			{
+				newQueue[c] = queue[counter1];
+				counter1++;
+			}
+			else
+			{
+				newQueue[c] = elements[counter2];
+				counter2++;
+			}
+			c++;
+		}
+		if (counter1 == j)
+		{
+			newQueue[c] = elements[counter2];
+			counter2++;
+		}
+		else
+		{
+			newQueue[c] = queue[counter1];
+			counter1++;
+		}
+	}
+	newQueue[c] = nullptr;
+
+	return newQueue;
+}
+
 Vertex** enqueueAtFront(Vertex** queue, Vertex** elements)
 {
 	int i = 0;
@@ -350,6 +432,11 @@ Vertex** enqueueAtFront(Vertex** queue, Vertex** elements)
 Vertex* breadthFirstSearch(Problem* problem)
 {
 	return generalSearch(problem, enqueueAtEnd);
+}
+
+Vertex* uniformCostSearch(Problem* problem)
+{
+	return generalSearch(problem, enqueueAtCost);
 }
 
 Vertex* depthFirstSearch(Problem* problem)
