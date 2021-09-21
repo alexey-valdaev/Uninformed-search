@@ -44,6 +44,7 @@ bool isRepeatState(Vertex* vertex, State* state);
 void printSolve(Vertex* parent);
 
 Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex**));
+Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex**, int), int depth);
 
 Vertex* makeNode(State* state);
 Vertex* makeNode(State* state, Vertex* parent, int count);
@@ -56,12 +57,13 @@ Vertex** queueingFn(Vertex** queue, Vertex** elements);
 Vertex** enqueueAtEnd(Vertex** queue, Vertex** elements);
 Vertex** enqueueAtCost(Vertex** queue, Vertex** elements);
 Vertex** enqueueAtFront(Vertex** queue, Vertex** elements);
-Vertex** enqueueAtFrontLimited(Vertex** queue, Vertex** elements);
+Vertex** enqueueAtFrontLimited(Vertex** queue, Vertex** elements, int depth);
 
 Vertex* breadthFirstSearch(Problem* problem);
 Vertex* uniformCostSearch(Problem* problem);
 Vertex* depthFirstSearch(Problem* problem);
-Vertex* depthLimitedSearch(Problem* problem);
+Vertex* depthLimitedSearch(Problem* problem, int depth);
+Vertex* iterativeDeepeningSearch(Problem* problem);
 
 int main()
 {
@@ -70,7 +72,8 @@ int main()
 	//Vertex* solve = breadthFirstSearch(problem);
 	//Vertex* solve = depthFirstSearch(problem);
 	//Vertex* solve = uniformCostSearch(problem);
-	Vertex* solve = depthLimitedSearch(problem);
+	//Vertex* solve = depthLimitedSearch(problem, 10);
+	Vertex* solve = iterativeDeepeningSearch(problem);
 
 	printSolve(solve);
 }
@@ -203,6 +206,36 @@ Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex*
 			return node;
 		}
 		nodes = queueingFn(nodes, expand(node, node->action));
+	}
+}
+
+Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex**, int), int depth)
+{
+	Vertex** nodes = makeQueue(makeNode(&problem->INITIAL_STATE)); // создаём кайму
+	Vertex* node;
+
+	while (true)
+	{
+		for (int j = 0; nodes[j]; j++)
+		{
+			for (int i = 0; i < 3; i++)
+			{
+				std::cout << nodes[j]->state->rodStates[i].rodState << " ";
+			}
+			std::cout << std::endl << "depth = " << nodes[j]->depth << std::endl;
+		}
+		std::cout << "\n";
+
+		if (empty(nodes))
+		{
+			return nullptr;
+		}
+		node = removeFront(nodes);
+		if (goalTest(node->state, problem))
+		{
+			return node;
+		}
+		nodes = queueingFn(nodes, expand(node, node->action), depth);
 	}
 }
 
@@ -431,13 +464,12 @@ Vertex** enqueueAtFront(Vertex** queue, Vertex** elements)
 	return newQueue;
 }
 
-Vertex** enqueueAtFrontLimited(Vertex** queue, Vertex** elements)
+Vertex** enqueueAtFrontLimited(Vertex** queue, Vertex** elements, int depth)
 {
-	int limit = 10;
 	int i = 0;
 	while (elements[i])
 	{
-		if (elements[i]->depth <= limit) i++;
+		if (elements[i]->depth <= depth) i++;
 		else break;
 	}
 	int j = 0;
@@ -476,7 +508,19 @@ Vertex* depthFirstSearch(Problem* problem)
 	return generalSearch(problem, enqueueAtFront);
 }
 
-Vertex* depthLimitedSearch(Problem* problem)
+Vertex* depthLimitedSearch(Problem* problem, int depth)
 {
-	return generalSearch(problem, enqueueAtFrontLimited);
+	return generalSearch(problem, enqueueAtFrontLimited, depth);
+}
+
+Vertex* iterativeDeepeningSearch(Problem* problem)
+{
+	for (int i = 0; true; i++)
+	{
+		Vertex* solution = depthLimitedSearch(problem, i);
+		if (solution)
+		{
+			return solution;
+		}
+	}
 }
