@@ -42,9 +42,12 @@ bool checkCondition(const char* ch1, const char* ch2);
 bool isEqualStates(State* one, State* two);
 bool isRepeatState(Vertex* vertex, State* state);
 void printSolve(Vertex* parent);
+void printSolveBack(Vertex* parent);
+void printSolve(Vertex** parent);
 
 Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex**));
 Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex**, int), int depth);
+Vertex** generalBiDirectionalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex**));
 
 Vertex* makeNode(State* state);
 Vertex* makeNode(State* state, Vertex* parent, int count);
@@ -64,6 +67,7 @@ Vertex* uniformCostSearch(Problem* problem);
 Vertex* depthFirstSearch(Problem* problem);
 Vertex* depthLimitedSearch(Problem* problem, int depth);
 Vertex* iterativeDeepeningSearch(Problem* problem);
+Vertex** biDirectionalSearch(Problem* problem);
 
 int main()
 {
@@ -73,7 +77,8 @@ int main()
 	//Vertex* solve = depthFirstSearch(problem);
 	//Vertex* solve = uniformCostSearch(problem);
 	//Vertex* solve = depthLimitedSearch(problem, 10);
-	Vertex* solve = iterativeDeepeningSearch(problem);
+	//Vertex* solve = iterativeDeepeningSearch(problem);
+	Vertex** solve = biDirectionalSearch(problem);
 
 	printSolve(solve);
 }
@@ -179,6 +184,26 @@ void printSolve(Vertex* parent)
 	std::cout << std::endl << "depth = " << parent->depth << std::endl;
 }
 
+void printSolveBack(Vertex* parent)
+{
+	for (int i = 0; i < 3; i++)
+	{
+		std::cout << parent->state->rodStates[i].rodState << " ";
+	}
+	std::cout << std::endl << "depth = " << parent->depth << std::endl;
+
+	if (parent->parentNode)
+	{
+		printSolveBack(parent->parentNode);
+	}
+}
+
+void printSolve(Vertex** parent)
+{
+	printSolve(parent[0]);
+	printSolveBack(parent[1]->parentNode);
+}
+
 Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex**))
 {
 	Vertex** nodes = makeQueue(makeNode(&problem->INITIAL_STATE)); // создаём кайму
@@ -236,6 +261,66 @@ Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex*
 			return node;
 		}
 		nodes = queueingFn(nodes, expand(node, node->action), depth);
+	}
+}
+
+Vertex** generalBiDirectionalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex**))
+{
+	Vertex** nodes1 = makeQueue(makeNode(&problem->INITIAL_STATE));
+	Vertex** nodes2 = makeQueue(makeNode(&problem->GOAL_TEST));
+	Vertex* node1, *node2;
+
+	while (true)
+	{
+		for (int j = 0; nodes1[j]; j++)
+		{
+			for (int i = 0; i < 3; i++)
+			{
+				std::cout << nodes1[j]->state->rodStates[i].rodState << " ";
+			}
+			std::cout << std::endl << "depth = " << nodes1[j]->depth << std::endl;
+		}
+		std::cout << "\n";
+
+		if (empty(nodes1))
+		{
+			return nullptr;
+		}
+		node1 = removeFront(nodes1);
+		for (int i = 1; nodes2[i]; i++)
+			if (isEqualStates(node1->state, nodes2[i]->state))
+			{
+				Vertex** solve = new Vertex * [2];
+				solve[0] = node1;
+				solve[1] = nodes2[i];
+				return solve;
+			}
+		nodes1 = queueingFn(nodes1, expand(node1, node1->action));
+
+		for (int j = 0; nodes2[j]; j++)
+		{
+			for (int i = 0; i < 3; i++)
+			{
+				std::cout << nodes2[j]->state->rodStates[i].rodState << " ";
+			}
+			std::cout << std::endl << "depth = " << nodes2[j]->depth << std::endl;
+		}
+		std::cout << "\n";
+
+		if (empty(nodes2))
+		{
+			return nullptr;
+		}
+		node2 = removeFront(nodes2);
+		for (int i = 1; nodes1[i]; i++)
+			if (isEqualStates(node2->state, nodes1[i]->state))
+			{
+				Vertex** solve = new Vertex * [2];
+				solve[0] = nodes1[i];
+				solve[1] = node2;
+				return solve;
+			}
+		nodes2 = queueingFn(nodes2, expand(node2, node2->action));
 	}
 }
 
@@ -523,4 +608,9 @@ Vertex* iterativeDeepeningSearch(Problem* problem)
 			return solution;
 		}
 	}
+}
+
+Vertex** biDirectionalSearch(Problem* problem)
+{
+	return generalBiDirectionalSearch(problem, enqueueAtEnd);
 }
