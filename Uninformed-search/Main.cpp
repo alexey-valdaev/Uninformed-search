@@ -1,44 +1,32 @@
 #include <string>
 #include <iostream>
 
-struct RodState
-{
-	std::string rodState;
-};
-
 struct State
 {
-	RodState rodStates[3];
+	std::string field[3];
+	int emptyFieldStr;
+	int emptyFieldCol;
 };
 
 struct Problem
 {
-	State INITIAL_STATE = { "1LMS", "2", "3" };
-	State** operation;
-	State GOAL_TEST = { "1", "2", "3LMS" };
-	int pathCost;
+	State INITIAL_STATE = { "724", "5 6", "831", 1, 1 };
+	std::string operation[4] = {"Left", "Right", "Up", "Down"};
+	State GOAL_TEST = { " 12", "345", "678", 0, 0 };
+	int pathCost = 1;
 };
-
-//struct Problem
-//{
-//	State INITIAL_STATE = {"1S", "2", "3"};
-//	State** operation;
-//	State GOAL_TEST = {"1G", "2", "3"};
-//	int pathCost;
-//};
 
 struct Vertex
 {
 	State* state;
 	Vertex* parentNode;
-	State* action;
+	std::string action;
 	int depth;
 	int pathCost;
 };
 
-State** initSuccessor(State* initState);
-void searchPossibleStates(State* initState, int index, State** newStates, int& n);
-bool checkCondition(const char* ch1, const char* ch2);
+State** initSuccessor(State* initState, std::string* action);
+void searchPossibleStates(State* initState, State** newStates, std::string* action, int left, int right, int up, int down);
 bool isEqualStates(State* one, State* two);
 bool isRepeatState(Vertex* vertex, State* state);
 void printSolve(Vertex* parent);
@@ -50,12 +38,12 @@ Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex*
 Vertex** generalBiDirectionalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex**));
 
 Vertex* makeNode(State* state);
-Vertex* makeNode(State* state, Vertex* parent, int count);
+Vertex* makeNode(State* state, Vertex* parent, std::string action);
 Vertex** makeQueue(Vertex* elements);
 bool empty(Vertex** queue);
 Vertex* removeFront(Vertex**& queue);
 bool goalTest(State* state, Problem* problem);
-Vertex** expand(Vertex* node, State* operators);
+Vertex** expand(Vertex* node);
 Vertex** queueingFn(Vertex** queue, Vertex** elements);
 Vertex** enqueueAtEnd(Vertex** queue, Vertex** elements);
 Vertex** enqueueAtCost(Vertex** queue, Vertex** elements);
@@ -76,81 +64,92 @@ int main()
 	//Vertex* solve = breadthFirstSearch(problem);
 	//Vertex* solve = depthFirstSearch(problem);
 	//Vertex* solve = uniformCostSearch(problem);
-	//Vertex* solve = depthLimitedSearch(problem, 10);
-	//Vertex* solve = iterativeDeepeningSearch(problem);
-	Vertex** solve = biDirectionalSearch(problem);
+	//Vertex* solve = depthLimitedSearch(problem, 40);
+	Vertex* solve = iterativeDeepeningSearch(problem);
+	//Vertex** solve = biDirectionalSearch(problem);
 
 	printSolve(solve);
 }
 
-State** initSuccessor(State* initState)
+State** initSuccessor(State* initState, std::string* action)
 {
-	State** newStates = new State* [100];
-	for (int i = 0; i < 100; i++)
+	int left = 1, right = 1, up = 1, down = 1;
+	if (initState->emptyFieldStr == 0) down = 0;
+	if (initState->emptyFieldStr == 2) up = 0;
+	if (initState->emptyFieldCol == 0) right = 0;
+	if (initState->emptyFieldCol == 2) left = 0;
+
+	State** newStates = new State* [left + right + up + down + 1];
+	for (int i = 0; i < left + right + up + down; i++)
 	{
 		newStates[i] = new State();
 	}
-	int n = 0;
-	for (int i = 0; i < 3; i++)
-	{
-		std::string* str = &initState->rodStates[i].rodState;
-		if ((*str).length() > 1)
-		{
-			searchPossibleStates(initState, i, newStates, n);
-		}
-	}
+	newStates[left + right + up + down] = nullptr;
+
+	searchPossibleStates(initState, newStates, action, left, right, up, down);
+
 	return newStates;
 }
 
-void searchPossibleStates(State* initState, int index, State** newStates, int& n)
+void searchPossibleStates(State* initState, State** newStates, std::string* action, int left, int right, int up, int down)
 {
-	for (int i = 0; i < 3; i++)
+	int n = 0;
+	int str = initState->emptyFieldStr;
+	int col = initState->emptyFieldCol;
+	if (left)
 	{
-		std::string* str1 = &(initState->rodStates[index]).rodState;
-		std::string* str2 = &(initState->rodStates[i]).rodState;
-		if (&initState->rodStates[index] != &initState->rodStates[i] &&
-			checkCondition((*str1).substr((*str1).size() - 1).c_str(),
-				(*str2).substr((*str2).size() - 1).c_str()))
+		action[n] = "Left";
+		for (int i = 0; i < 3; i++)
 		{
-			*newStates[n++] = *initState;
-			(*newStates[n - 1]).rodStates[i].rodState.push_back(*(*str1).substr((*str1).size() - 1).c_str());
-			(*newStates[n - 1]).rodStates[index].rodState.pop_back();
+			newStates[n]->field[i] = initState->field[i];
 		}
+		newStates[n]->field[str][col] = initState->field[str][col + 1];
+		newStates[n]->field[str][col + 1] = ' ';
+		newStates[n]->emptyFieldStr = str;
+		newStates[n++]->emptyFieldCol = col + 1;
 	}
-}
-
-//void searchPossibleStates(State* initState, int index, State** newStates, int& n)
-//{
-//	(*newStates[n]) = *initState;
-//	if (initState->rodStates->rodState == "1S")
-//	{
-//		(*newStates[n++]).rodStates->rodState = "1A";
-//		(*newStates[n]) = *initState;
-//		(*newStates[n++]).rodStates->rodState = "1B";
-//		(*newStates[n]) = *initState;
-//		(*newStates[n++]).rodStates->rodState = "1C";
-//	}
-//	else
-//	{
-//		(*newStates[n++]).rodStates->rodState = "1G";
-//	}
-//}
-
-bool checkCondition(const char* ch1, const char* ch2)
-{
-	if (*ch1 == 'S' ||
-		(*ch1 == 'M' && *ch2 != 'S') ||
-		(*ch1 == 'L' && *ch2 != 'S' && *ch2 != 'M'))
+	if (right)
 	{
-		return true;
+		action[n] = "Right";
+		for (int i = 0; i < 3; i++)
+		{
+			newStates[n]->field[i] = initState->field[i];
+		}
+		newStates[n]->field[str][col] = initState->field[str][col - 1];
+		newStates[n]->field[str][col - 1] = ' ';
+		newStates[n]->emptyFieldStr = str;
+		newStates[n++]->emptyFieldCol = col - 1;
 	}
-	return false;
+	if (up)
+	{
+		action[n] = "Up";
+		for (int i = 0; i < 3; i++)
+		{
+			newStates[n]->field[i] = initState->field[i];
+		}
+		newStates[n]->field[str][col] = initState->field[str + 1][col];
+		newStates[n]->field[str + 1][col] = ' ';
+		newStates[n]->emptyFieldStr = str + 1;
+		newStates[n++]->emptyFieldCol = col;
+	}
+	if (down)
+	{
+		action[n] = "Down";
+		for (int i = 0; i < 3; i++)
+		{
+			newStates[n]->field[i] = initState->field[i];
+		}
+		newStates[n]->field[str][col] = initState->field[str - 1][col];
+		newStates[n]->field[str - 1][col] = ' ';
+		newStates[n]->emptyFieldStr = str - 1;
+		newStates[n++]->emptyFieldCol = col;
+	}
 }
 
 bool isEqualStates(State* one, State* two)
 {
-	if (one->rodStates[0].rodState == two->rodStates[0].rodState &&
-		one->rodStates[1].rodState == two->rodStates[1].rodState)
+	if (one->field[0] == two->field[0] && one->field[1] == two->field[1] &&
+		one->field[2] == two->field[2])
 	{
 		return true;
 	}
@@ -179,7 +178,7 @@ void printSolve(Vertex* parent)
 
 	for (int i = 0; i < 3; i++)
 	{
-		std::cout << parent->state->rodStates[i].rodState << " ";
+		std::cout << parent->state->field[i] << "\n";
 	}
 	std::cout << std::endl << "depth = " << parent->depth << std::endl;
 }
@@ -188,7 +187,7 @@ void printSolveBack(Vertex* parent)
 {
 	for (int i = 0; i < 3; i++)
 	{
-		std::cout << parent->state->rodStates[i].rodState << " ";
+		std::cout << parent->state->field[i] << "\n";
 	}
 	std::cout << std::endl << "depth = " << parent->depth << std::endl;
 
@@ -206,7 +205,7 @@ void printSolve(Vertex** parent)
 
 Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex**))
 {
-	Vertex** nodes = makeQueue(makeNode(&problem->INITIAL_STATE)); // создаём кайму
+	Vertex** nodes = makeQueue(makeNode(&problem->INITIAL_STATE));
 	Vertex* node;
 
 	while (true)
@@ -215,9 +214,9 @@ Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex*
 		{
 			for (int i = 0; i < 3; i++)
 			{
-				std::cout << nodes[j]->state->rodStates[i].rodState << " ";
+				std::cout << nodes[j]->state->field[i] << "\n";
 			}
-			std::cout << std::endl << "depth = " << nodes[j]->depth << std::endl;
+			std::cout << "depth = " << nodes[j]->depth << std::endl;
 		}
 		std::cout << "\n";
 
@@ -230,13 +229,13 @@ Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex*
 		{
 			return node;
 		}
-		nodes = queueingFn(nodes, expand(node, node->action));
+		nodes = queueingFn(nodes, expand(node));
 	}
 }
 
 Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex**, int), int depth)
 {
-	Vertex** nodes = makeQueue(makeNode(&problem->INITIAL_STATE)); // создаём кайму
+	Vertex** nodes = makeQueue(makeNode(&problem->INITIAL_STATE));
 	Vertex* node;
 
 	while (true)
@@ -245,9 +244,9 @@ Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex*
 		{
 			for (int i = 0; i < 3; i++)
 			{
-				std::cout << nodes[j]->state->rodStates[i].rodState << " ";
+				std::cout << nodes[j]->state->field[i] << "\n";
 			}
-			std::cout << std::endl << "depth = " << nodes[j]->depth << std::endl;
+			std::cout << "depth = " << nodes[j]->depth << std::endl;
 		}
 		std::cout << "\n";
 
@@ -260,7 +259,7 @@ Vertex* generalSearch(Problem* problem, Vertex** (*queueingFn)(Vertex**, Vertex*
 		{
 			return node;
 		}
-		nodes = queueingFn(nodes, expand(node, node->action), depth);
+		nodes = queueingFn(nodes, expand(node), depth);
 	}
 }
 
@@ -276,9 +275,9 @@ Vertex** generalBiDirectionalSearch(Problem* problem, Vertex** (*queueingFn)(Ver
 		{
 			for (int i = 0; i < 3; i++)
 			{
-				std::cout << nodes1[j]->state->rodStates[i].rodState << " ";
+				std::cout << nodes1[j]->state->field[i] << "\n";
 			}
-			std::cout << std::endl << "depth = " << nodes1[j]->depth << std::endl;
+			std::cout << "depth = " << nodes1[j]->depth << std::endl;
 		}
 		std::cout << "\n";
 
@@ -295,15 +294,15 @@ Vertex** generalBiDirectionalSearch(Problem* problem, Vertex** (*queueingFn)(Ver
 				solve[1] = nodes2[i];
 				return solve;
 			}
-		nodes1 = queueingFn(nodes1, expand(node1, node1->action));
+		nodes1 = queueingFn(nodes1, expand(node1));
 
 		for (int j = 0; nodes2[j]; j++)
 		{
 			for (int i = 0; i < 3; i++)
 			{
-				std::cout << nodes2[j]->state->rodStates[i].rodState << " ";
+				std::cout << nodes2[j]->state->field[i] << "\n";
 			}
-			std::cout << std::endl << "depth = " << nodes2[j]->depth << std::endl;
+			std::cout << "depth = " << nodes2[j]->depth << std::endl;
 		}
 		std::cout << "\n";
 
@@ -320,7 +319,7 @@ Vertex** generalBiDirectionalSearch(Problem* problem, Vertex** (*queueingFn)(Ver
 				solve[1] = node2;
 				return solve;
 			}
-		nodes2 = queueingFn(nodes2, expand(node2, node2->action));
+		nodes2 = queueingFn(nodes2, expand(node2));
 	}
 }
 
@@ -329,62 +328,38 @@ Vertex* makeNode(State* state)
 	Vertex* vertex = new Vertex();
 	vertex->state = state;
 	vertex->parentNode = nullptr;
-	vertex->action = nullptr;
+	vertex->action = "";
 	vertex->depth = 0;
 	vertex->pathCost = 0;
 
 	return vertex;
 }
 
-Vertex* makeNode(State* state, Vertex* parent, int count)
+Vertex* makeNode(State* state, Vertex* parent, std::string action)
 {
 	Vertex* vertex = new Vertex();
 	vertex->state = state;
 	vertex->parentNode = parent;
-	vertex->action = parent->state;
+	vertex->action = action;
 	vertex->depth = parent->depth + 1;
 	vertex->pathCost = parent->pathCost + 1;
-
-	/*if (state->rodStates->rodState == "1A")
-	{
-		vertex->pathCost = parent->pathCost + 1;
-	}
-	if (state->rodStates->rodState == "1B")
-	{
-		vertex->pathCost = parent->pathCost + 5;
-	}
-	if (state->rodStates->rodState == "1C")
-	{
-		vertex->pathCost = parent->pathCost + 15;
-	}
-	if (vertex->parentNode->state->rodStates->rodState == "1A")
-	{
-		vertex->pathCost = parent->pathCost + 10;
-	}
-	if (vertex->parentNode->state->rodStates->rodState == "1B")
-	{
-		vertex->pathCost = parent->pathCost + 5;
-	}
-	if (vertex->parentNode->state->rodStates->rodState == "1C")
-	{
-		vertex->pathCost = parent->pathCost + 5;
-	}*/
 
 	return vertex;
 }
 
 Vertex** makeQueue(Vertex* elements)
 {
-	State** states = initSuccessor(elements->state);
+	std::string action[4];
+	State** states = initSuccessor(elements->state, action);
 	int i = 0;
-	while (states[i]->rodStates->rodState != "")
+	while (states[i])
 	{
 		i++;
 	}
 	Vertex** vertex = new Vertex * [i + 1];
 	for (int j = 0; j < i; j++)
 	{
-		vertex[j] = makeNode(states[j], elements, i);
+		vertex[j] = makeNode(states[j], elements, action[j]);
 		vertex[j + 1] = nullptr;
 	}
 	return vertex;
@@ -415,16 +390,17 @@ bool goalTest(State* state, Problem* problem)
 	return false;
 }
 
-Vertex** expand(Vertex* node, State* operators)
+Vertex** expand(Vertex* node)
 {
 	int counter = -1;
-	State** states = initSuccessor(node->state);
+	std::string action[4];
+	State** states = initSuccessor(node->state, action);
 	int i = 0;
-	while (states[i]->rodStates->rodState != "")
+	while (states[i])
 	{
 		if (isRepeatState(node, states[i]))
 		{
-			for (int j = 0; states[i + j]->rodStates->rodState != ""; j++)
+			for (int j = 0; states[i + j]; j++)
 			{
 				states[i + j] = states[i + j + 1];
 			}
@@ -434,7 +410,7 @@ Vertex** expand(Vertex* node, State* operators)
 	Vertex** vertex = new Vertex * [i + 1];
 	for (int j = 0; j < i; j++)
 	{
-		vertex[j] = makeNode(states[j], node, i);
+		vertex[j] = makeNode(states[j], node, action[j]);
 	}
 	vertex[i] = nullptr;
 	return vertex;
